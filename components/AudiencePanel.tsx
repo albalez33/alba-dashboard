@@ -81,12 +81,26 @@ export default function AudiencePanel({
     age?: Item[];
     gender?: Item[];
     online_followers?: { value: Record<string, number> }[];
+    engaged_country?: Item[];
+    reached_country?: Item[];
   } | null;
 }) {
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div className="bg-card border border-cardBorder rounded-2xl p-5">
-        <h3 className="text-sm font-medium text-zinc-300 mb-4">🌍 Países</h3>
+        <h3 className="text-sm font-medium text-zinc-300 mb-4">
+          🤝 Países que interactúan <span className="text-zinc-600">· últimos 30 días, sigan o no</span>
+        </h3>
+        <Bars items={audience?.engaged_country ?? []} />
+      </div>
+      <div className="bg-card border border-cardBorder rounded-2xl p-5">
+        <h3 className="text-sm font-medium text-zinc-300 mb-4">
+          📡 Países alcanzados <span className="text-zinc-600">· últimos 30 días, sigan o no</span>
+        </h3>
+        <Bars items={audience?.reached_country ?? []} />
+      </div>
+      <div className="bg-card border border-cardBorder rounded-2xl p-5">
+        <h3 className="text-sm font-medium text-zinc-300 mb-4">🌍 Países de tus seguidores</h3>
         <Bars items={audience?.country ?? []} />
       </div>
       <div className="bg-card border border-cardBorder rounded-2xl p-5">
