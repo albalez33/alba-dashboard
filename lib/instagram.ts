@@ -138,6 +138,41 @@ export async function getMedia(limit = 50): Promise<IgMedia[]> {
   return json.data ?? [];
 }
 
+// Stories activas (solo viven 24h)
+export async function getStories(): Promise<IgMedia[]> {
+  try {
+    const json = await igGet<any>(`${env("IG_USER_ID")}/stories`, {
+      fields:
+        "id,caption,media_type,media_product_type,media_url,thumbnail_url,timestamp",
+      limit: "50",
+    });
+    return json.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// Insights de una story (algunas métricas no están en todas las cuentas)
+export async function getStoryInsights(
+  storyId: string
+): Promise<Record<string, number> | null> {
+  const attempts = [
+    "views,reach,replies,shares,total_interactions,navigation",
+    "views,reach,replies",
+  ];
+  for (const metrics of attempts) {
+    try {
+      const json = await igGet<any>(`${storyId}/insights`, { metric: metrics });
+      const out: Record<string, number> = {};
+      for (const m of json.data ?? []) out[m.name] = m.values?.[0]?.value ?? 0;
+      return out;
+    } catch {
+      // probar con menos métricas
+    }
+  }
+  return null;
+}
+
 // Insights por publicación (views, reach, saved, shares, total_interactions)
 export async function getMediaInsights(
   mediaId: string
