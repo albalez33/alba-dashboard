@@ -137,14 +137,17 @@ export async function GET(req: NextRequest) {
   }
   log.media_upserted = mediaRows.length;
 
-  // 5) Audiencia (demografía + seguidores online)
-  const [country, city, age, gender, online] = await Promise.all([
-    ig.getDemographics("country"),
-    ig.getDemographics("city"),
-    ig.getDemographics("age"),
-    ig.getDemographics("gender"),
-    ig.getOnlineFollowers(),
-  ]);
+  // 5) Audiencia (demografía de seguidores + interacción + alcance + online)
+  const [country, city, age, gender, online, engagedCountry, reachedCountry] =
+    await Promise.all([
+      ig.getDemographics("country"),
+      ig.getDemographics("city"),
+      ig.getDemographics("age"),
+      ig.getDemographics("gender"),
+      ig.getOnlineFollowers(),
+      ig.getDemographics("country", "engaged_audience_demographics"),
+      ig.getDemographics("country", "reached_audience_demographics"),
+    ]);
   const { error: audError } = await sb.from("audience").upsert(
     {
       id: "latest",
@@ -153,6 +156,8 @@ export async function GET(req: NextRequest) {
       age,
       gender,
       online_followers: online,
+      engaged_country: engagedCountry,
+      reached_country: reachedCountry,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "id" }
