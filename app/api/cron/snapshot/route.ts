@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
   if (rows.size > 0) {
     const { error } = await sb
       .from("daily_metrics")
-      .upsert([...rows.values()], { onConflict: "date" });
+      .upsert(Array.from(rows.values()), { onConflict: "date" });
     if (error) log.daily_upsert_error = error.message;
   }
   log.days_upserted = rows.size;
