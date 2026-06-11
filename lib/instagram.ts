@@ -84,17 +84,24 @@ export async function getOnlineFollowers(): Promise<
   }
 }
 
-// Demografía de seguidores (requiere ~100+ seguidores)
+// Demografía: seguidores, audiencia que interactúa o audiencia alcanzada
 export async function getDemographics(
-  breakdown: "country" | "city" | "age" | "gender"
+  breakdown: "country" | "city" | "age" | "gender",
+  metric:
+    | "follower_demographics"
+    | "engaged_audience_demographics"
+    | "reached_audience_demographics" = "follower_demographics"
 ): Promise<{ key: string; value: number }[]> {
   try {
-    const json = await igGet<any>(`${env("IG_USER_ID")}/insights`, {
-      metric: "follower_demographics",
+    const params: Record<string, string> = {
+      metric,
       period: "lifetime",
       metric_type: "total_value",
       breakdown,
-    });
+    };
+    // Las de interacción/alcance requieren ventana temporal
+    if (metric !== "follower_demographics") params.timeframe = "last_30_days";
+    const json = await igGet<any>(`${env("IG_USER_ID")}/insights`, params);
     const results =
       json.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
     return results.map((r: any) => ({
