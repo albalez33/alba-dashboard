@@ -53,12 +53,16 @@ export async function GET(req: NextRequest) {
   log.followers_count = profile.followers_count;
 
   // 2) Series diarias (reach + nuevos seguidores) de los últimos N días
-  const since = unixDayStart(backfill);
+  // La API limita la ventana a 30 días exactos (2.592.000 s): recortamos con margen
   const until = Math.floor(Date.now() / 1000);
+  const since = Math.max(unixDayStart(backfill), until - 2592000 + 7200);
   const rows = new Map<string, Record<string, unknown>>();
 
   const [reachSeries, followerSeries] = await Promise.all([
-    ig.getDailySeries("reach", since, until),
+    ig.getDailySeries("reach", since, until).catch((e) => {
+      log.reach_series_error = String(e);
+      return [];
+    }),
     ig.getDailySeries("follower_count", since, until).catch(() => []),
   ]);
   for (const v of reachSeries) {
