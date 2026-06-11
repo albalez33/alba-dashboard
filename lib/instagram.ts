@@ -99,15 +99,18 @@ export async function getDemographics(
       metric_type: "total_value",
       breakdown,
     };
-    // Las de interacción/alcance requieren ventana temporal
-    if (metric !== "follower_demographics") params.timeframe = "last_30_days";
+    // Las de interacción/alcance requieren ventana temporal.
+    // Desde v20 solo se admiten this_month (~30 días) y this_week.
+    if (metric !== "follower_demographics") params.timeframe = "this_month";
     const json = await igGet<any>(`${env("IG_USER_ID")}/insights`, params);
     const results =
       json.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
-    return results.map((r: any) => ({
-      key: r.dimension_values?.[0] ?? "?",
-      value: r.value ?? 0,
-    }));
+    // En métricas con timeframe, dimension_values = [TIMEFRAME, valor];
+    // tomamos siempre el último elemento (el valor real del breakdown)
+    return results.map((r: any) => {
+      const dims = r.dimension_values ?? [];
+      return { key: dims[dims.length - 1] ?? "?", value: r.value ?? 0 };
+    });
   } catch {
     return [];
   }
