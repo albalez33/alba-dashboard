@@ -137,6 +137,35 @@ export async function GET(req: NextRequest) {
   }
   log.media_upserted = mediaRows.length;
 
+  // 4b) Stories activas: viven 24h, se acumulan en histórico día a día
+  const stories = await ig.getStories();
+  if (stories.length > 0) {
+    const storyRows = await Promise.all(
+      stories.map(async (s) => {
+        const ins = await ig.getStoryInsights(s.id);
+        return {
+          id: s.id,
+          caption: s.caption?.slice(0, 300) ?? null,
+          media_url: s.media_url ?? null,
+          thumbnail_url: s.thumbnail_url ?? null,
+          timestamp: s.timestamp,
+          views: ins?.views ?? null,
+          reach: ins?.reach ?? null,
+          replies: ins?.replies ?? null,
+          shares: ins?.shares ?? null,
+          interactions: ins?.total_interactions ?? null,
+          navigation: ins?.navigation ?? null,
+          updated_at: new Date().toISOString(),
+        };
+      })
+    );
+    const { error: stError } = await sb
+      .from("stories")
+      .upsert(storyRows, { onConflict: "id" });
+    if (stError) log.stories_upsert_error = stError.message;
+    log.stories_upserted = storyRows.length;
+  }
+
   // 5) Audiencia (demografía de seguidores + interacción + alcance + online)
   const [country, city, age, gender, online, engagedCountry, reachedCountry] =
     await Promise.all([
