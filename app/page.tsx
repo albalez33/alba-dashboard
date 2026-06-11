@@ -20,6 +20,7 @@ import PeriodSelector from "@/components/PeriodSelector";
 import TopContent from "@/components/TopContent";
 import AudiencePanel from "@/components/AudiencePanel";
 import { FollowersChart, ReachViewsChart, InteractionsChart } from "@/components/Charts";
+import ContentChart, { ContentPoint } from "@/components/ContentChart";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +34,11 @@ export default async function Dashboard({
     : "30";
 
   const sb = supabaseAdmin();
-  const [dailyRes, mediaRes, audRes] = await Promise.all([
+  const [dailyRes, mediaRes, audRes, storiesRes] = await Promise.all([
     sb.from("daily_metrics").select("*").order("date", { ascending: true }),
     sb.from("media").select("*").order("timestamp", { ascending: false }).limit(300),
     sb.from("audience").select("*").eq("id", "latest").maybeSingle(),
+    sb.from("stories").select("*").order("timestamp", { ascending: false }).limit(100),
   ]);
 
   const daily = (dailyRes.data ?? []) as DailyRow[];
@@ -118,6 +120,35 @@ export default async function Dashboard({
     .slice(0, 12);
 
   const newFollowers = sum(cur, "follower_delta");
+
+  // Gráficas por tipo de contenido: alcance, views y ER por pieza (últimas 20)
+  const toPoints = (
+    list: {
+      timestamp: string;
+      reach: number | null;
+      views: number | null;
+      interactions: number | null;
+    }[],
+    max = 20
+  ): ContentPoint[] =>
+    list
+      .slice(0, max)
+      .reverse()
+      .map((m) => ({
+        label: new Date(m.timestamp).toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "short",
+        }),
+        reach: m.reach,
+        views: m.views,
+        er: m.reach
+          ? Number((((m.interactions ?? 0) / m.reach) * 100).toFixed(2))
+          : null,
+      }));
+
+  const postPoints = toPoints(allMedia.filter((m) => m.media_product_type === "FEED"));
+  const reelPoints = toPoints(allMedia.filter((m) => m.media_product_type === "REELS"));
+  const storyPoints = toPoints((storiesRes.data ?? []) as any[]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8">
@@ -219,6 +250,43 @@ export default async function Dashboard({
         ) : (
           <p className="text-sm text-zinc-600 py-10 text-center">Sin datos aún.</p>
         )}
+      </section>
+
+      {/* Rendimiento por tipo de contenido */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Rendimiento por contenido</h2>
+        <div className="bg-card border border-cardBorder rounded-2xl p-5">
+          <h3 className="text-sm font-medium text-zinc-300 mb-4">
+            📸 Posts <span className="text-zinc-600">· alcance, views y ER de los últimos 20</span>
+          </h3>
+          {postPoints.length > 0 ? (
+            <ContentChart data={postPoints} />
+          ) : (
+            <p className="text-sm text-zinc-600 py-10 text-center">Sin posts sincronizados aún.</p>
+          )}
+        </div>
+        <div className="bg-card border border-cardBorder rounded-2xl p-5">
+          <h3 className="text-sm font-medium text-zinc-300 mb-4">
+            🎬 Reels <span className="text-zinc-600">· alcance, views y ER de los últimos 20</span>
+          </h3>
+          {reelPoints.length > 0 ? (
+            <ContentChart data={reelPoints} />
+          ) : (
+            <p className="text-sm text-zinc-600 py-10 text-center">Sin reels sincronizados aún.</p>
+          )}
+        </div>
+        <div className="bg-card border border-cardBorder rounded-2xl p-5">
+          <h3 className="text-sm font-medium text-zinc-300 mb-4">
+            ⏳ Stories <span className="text-zinc-600">· se capturan 2 veces al día mientras están activas; el histórico crece desde hoy</span>
+          </h3>
+          {storyPoints.length > 0 ? (
+            <ContentChart data={storyPoints} />
+          ) : (
+            <p className="text-sm text-zinc-600 py-10 text-center">
+              Aún no hay stories registradas. Las próximas que publiques se capturarán automáticamente.
+            </p>
+          )}
+        </div>
       </section>
 
       {/* Top contenidos */}
